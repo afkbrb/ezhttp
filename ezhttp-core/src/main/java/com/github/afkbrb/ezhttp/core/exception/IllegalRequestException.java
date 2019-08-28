@@ -1,6 +1,8 @@
 package com.github.afkbrb.ezhttp.core.exception;
 
-public class IllegalRequestException extends RuntimeException {
+import java.io.IOException;
+
+public class IllegalRequestException extends IOException {
 
     public IllegalRequestException() {
         super();

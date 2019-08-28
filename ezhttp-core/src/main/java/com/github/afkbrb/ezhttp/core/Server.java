@@ -29,6 +29,7 @@ public class Server {
 
     /**
      * Construct a server on the given port.
+     *
      * @param port Port of the server.
      */
     public Server(int port) {
@@ -37,6 +38,7 @@ public class Server {
 
     /**
      * Construct a server on the given host and port.
+     *
      * @param host Host of the server, default localhost.
      * @param port Port of the server.
      */
@@ -64,6 +66,7 @@ public class Server {
     /**
      * The most important method of the Server.
      * SubClass of this class should override this method to customize the server.
+     *
      * @param request The Request instance parsed from HTTP request line, request header and request body.
      * @return HTTP response.
      */
@@ -98,28 +101,36 @@ public class Server {
                     write(key);
                 }
             }
-
         }
     }
 
     /**
      * Accept new connection.
+     *
      * @param key
      */
     private void accept(SelectionKey key) {
         ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
+        SocketChannel client = null;
         try {
-            SocketChannel client = serverSocketChannel.accept();
+            client = serverSocketChannel.accept();
             System.out.println("accept connection from: " + client.getRemoteAddress());
             client.configureBlocking(false);
             client.register(selector, SelectionKey.OP_READ);
         } catch (IOException e) {
-            e.printStackTrace();
+            if (client != null) {
+                try {
+                    client.close();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
         }
     }
 
     /**
      * Process read operation in a new thread.
+     *
      * @param key
      */
     private void read(SelectionKey key) {
@@ -136,14 +147,22 @@ public class Server {
                 try {
                     request = RequestParser.parseRequest(client);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    System.err.println("err parsing request");
+                    key.cancel();
+                    try {
+                        key.channel().close();
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                    return;
                 }
+
                 Response response = handle(request);
                 try {
                     client.register(selector, SelectionKey.OP_WRITE, response);
                     selector.wakeup();
                 } catch (ClosedChannelException e) {
-                    e.printStackTrace();
+
                 }
             }
         });
@@ -152,6 +171,7 @@ public class Server {
 
     /**
      * Process write operation in a new thread.
+     *
      * @param key
      */
     private void write(SelectionKey key) {
@@ -170,10 +190,15 @@ public class Server {
                 // write to client
                 try {
                     client.write(buffer);
-                    key.cancel();
-                    client.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+
+                } finally {
+                    key.cancel();
+                    try {
+                        client.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         });
