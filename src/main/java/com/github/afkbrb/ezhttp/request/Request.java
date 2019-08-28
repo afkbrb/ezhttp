@@ -7,7 +7,7 @@ import com.github.afkbrb.ezhttp.protocol.HttpVersion;
 import java.util.Map;
 
 /**
- * 请求类，包含请求头、请求行、请求体等信息
+ * HTTP Request Entity
  */
 public class Request {
 
@@ -17,7 +17,6 @@ public class Request {
     private RequestBody requestBody;
 
     public Request() {
-
     }
 
     public Request(RequestLine requestLine, RequestHeader requestHeader, RequestBody requestBody) {
@@ -55,7 +54,6 @@ public class Request {
     }
 }
 
-// 仅提供包访问权限
 class RequestLine {
 
     private HttpMethod method;
@@ -110,7 +108,6 @@ class RequestLine {
     }
 }
 
-// 仅提供包访问权限
 class RequestHeader {
     private Map<String, String> headerMap;
 
@@ -131,13 +128,11 @@ class RequestHeader {
     }
 }
 
-// 仅提供包访问权限
 class RequestBody {
     private Map<String, String> formMap;
     private Map<String, MimeData> mimeMap;
 
     public RequestBody() {
-
     }
 
     public RequestBody(Map<String, String> formMap, Map<String, MimeData> mimeMap) {

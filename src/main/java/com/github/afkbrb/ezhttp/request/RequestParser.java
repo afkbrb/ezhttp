@@ -18,15 +18,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
-/**
- * 解析请求信息，返回保存请求信息的Request对象
- */
 public class RequestParser {
 
-    // Apache默认请求头限制就是8k
+    /**
+     * Assume that the size of the head is less than 8KB.
+     */
     public static final int BUFSIZE = 8192;
 
+    /**
+     * Parse the HTTP request line, request header and request body.
+     *
+     * @param client The client channel.
+     * @return HTTP Request entity instance.
+     * @throws IOException
+     */
     public static Request parseRequest(SocketChannel client) throws IOException {
         ByteBuffer buffer = ByteBuffer.allocate(BUFSIZE);
         client.read(buffer);
@@ -50,8 +55,8 @@ public class RequestParser {
         buffer.position(crlf2 + 4);
         int contentLength = requestHeader.getContentLength();
         ByteBuffer bodyBuffer = ByteBuffer.allocate(contentLength);
-        bodyBuffer.put(buffer); // 将buffer中的body部分存入bodyBuffer中
-        while (bodyBuffer.hasRemaining()) { // 读取流中剩下的部分
+        bodyBuffer.put(buffer); // Put the part of the body in buffer to bodyBuffer.
+        while (bodyBuffer.hasRemaining()) { // Read the remaining part of the body to bodyBuffer.
             client.read(bodyBuffer);
         }
         byte[] body = bodyBuffer.array();
@@ -60,11 +65,14 @@ public class RequestParser {
         return new Request(requestLine, requestHeader, requestBody);
     }
 
-    // 根据请求行构造RequestLine对象
-    // Request-Line = Method SP Request-URI SP HTTP-Version CRLF
+    /**
+     * Construct a RequestLine instance from request line.
+     * Request-Line = Method SP Request-URI SP HTTP-Version CRLF
+     *
+     * @param src
+     * @return
+     */
     private static RequestLine parseRequestLine(byte[] src) {
-        // System.out.println("line:");
-        // System.out.println(new String(src));
         RequestLine requestLine = new RequestLine();
         try {
             String str = new String(src, Config.CHARSET);
@@ -79,7 +87,9 @@ public class RequestParser {
             if (index != -1) {
                 String queryString = uri.substring(index + 1);
                 requestLine.setQueryString(decode(queryString));
-                // 不能先将queryString解码再传入parseQueryParams，否则如queryString键或值本来就含有&和=的话会解析错误
+                // Notice that we cannot decode the queryString first in the parseQueryParams method.
+                // Otherwise, if the key or value of some param contains character like '&' or '=',
+                // the param will be parsed by mistake.
                 Map<String, String> queryMap = parseQueryParams(queryString);
                 requestLine.setQueryMap(queryMap);
             }
@@ -89,10 +99,13 @@ public class RequestParser {
         return requestLine;
     }
 
-    // 根据请求头构造RequestHeader对象
+    /**
+     * Construct a RequestHeader instance from request header.
+     *
+     * @param src
+     * @return
+     */
     private static RequestHeader parseRequestHeader(byte[] src) {
-        // System.out.println("header:");
-        // System.out.println(new String(src));
         RequestHeader requestHeader = new RequestHeader();
         Map<String, String> headers = new HashMap<>();
         try {
@@ -111,10 +124,14 @@ public class RequestParser {
         return requestHeader;
     }
 
-    // 构造请求体
+    /**
+     * Construct a RequestBody instance from request body.
+     *
+     * @param src
+     * @param header
+     * @return
+     */
     private static RequestBody parseRequestBody(byte[] src, RequestHeader header) {
-        // System.out.println("body:");
-        // System.out.println(new String(src));
         if (src.length == 0) return new RequestBody();
         Map<String, String> formMap = new HashMap<>();
         Map<String, MimeData> mimeMap = new HashMap<>();
@@ -123,7 +140,6 @@ public class RequestParser {
         if (contentType.contains("application/x-www-form-urlencoded")) {
             try {
                 String body = new String(src, Config.CHARSET);
-                // 与queryString类似
                 formMap = parseQueryParams(body);
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
@@ -137,7 +153,6 @@ public class RequestParser {
         return new RequestBody(formMap, mimeMap);
     }
 
-    // 根据查询字符串创建查询map
     private static Map<String, String> parseQueryParams(String queryString) {
         Map<String, String> queryMap = new HashMap<>();
         String[] kvPairs = queryString.split("&");
@@ -155,15 +170,15 @@ public class RequestParser {
         Map<String, MimeData> map = new HashMap<>();
         int startIndex, endIndex;
         List<Integer> allBoundaryIndexes = BytesUtil.findAll(src, boundary);
-        //process empty form
+        // Process empty form.
         if (allBoundaryIndexes.size() == 0)
             return map;
 
-        //process each segment
-        for (int i = 0; i < allBoundaryIndexes.size() - 1; i++) { //there are allBoundaryIndexes.size() - 1 segments to process
+        // Process each segment.
+        for (int i = 0; i < allBoundaryIndexes.size() - 1; i++) { // There are allBoundaryIndexes.size() - 1 segments to process.
             startIndex = allBoundaryIndexes.get(i);
             endIndex = allBoundaryIndexes.get(i + 1);
-            byte[] segment = Arrays.copyOfRange(src, startIndex + boundary.length() + 2, endIndex);//去掉\r\n
+            byte[] segment = Arrays.copyOfRange(src, startIndex + boundary.length() + 2, endIndex);// Skip \r\n.
 
             int lineEndIndex = BytesUtil.indexOf(segment, "\r\n");
             byte[] firstLine = Arrays.copyOfRange(segment, 0, lineEndIndex);
@@ -176,19 +191,19 @@ public class RequestParser {
             int dataStartIndex;
             List<Integer> allQuotationIndexes = BytesUtil.findAll(firstLine, "\"");
             control = new String(Arrays.copyOfRange(firstLine, allQuotationIndexes.get(0) + 1, allQuotationIndexes.get(1)));
-            // without filename
+            // Without filename.
             // Content-Disposition: form-data; name="submit-name"
             if (allQuotationIndexes.size() == 2) {
                 dataStartIndex = lineEndIndex + 4;
                 data = Arrays.copyOfRange(segment, dataStartIndex, segment.length - 2);
             }
-            // with filename
-            // Content-Disposition: form-data; name="files"; filename="file1.txt"
+            // With filename.
+            // Content-Disposition: form-data; name="files"; filename="file.txt"
             if (allQuotationIndexes.size() == 4) {
                 filename = new String(Arrays.copyOfRange(firstLine, allQuotationIndexes.get(2) + 1, allQuotationIndexes.get(3)));
                 int headEndIndex = BytesUtil.indexOf(segment, "\r\n\r\n");
-                // find contentType, if not found, default is "text/plain"
-                // Content-Disposition: form-data; name="files"; filename="file1.txt"
+                // Find contentType, if not found, default is "text/plain".
+                // Content-Disposition: form-data; name="files"; filename="file.txt"
                 // Content-Type: text/plain
                 contentType = headEndIndex == lineEndIndex ? "text/plain" :
                         new String(Arrays.copyOfRange(segment, lineEndIndex + 16, headEndIndex));

@@ -9,30 +9,45 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 
 public class Server {
 
-    private String host = "localhost";
-    private int port = 80;
+    private String host;
+    private int port;
 
     private Selector selector;
 
+    /**
+     * Construct a server with default configuration.
+     * By default, host is localhost and port is 2333
+     */
     public Server() {
+        this("localhost", 2333);
     }
 
+    /**
+     * Construct a server on the given port.
+     * @param port Port of the server.
+     */
     public Server(int port) {
-        this.port = port;
+        this("localhost", port);
     }
 
+    /**
+     * Construct a server on the given host and port.
+     * @param host Host of the server, default localhost.
+     * @param port Port of the server.
+     */
     public Server(String host, int port) {
         this.host = host;
         this.port = port;
     }
 
+    /**
+     * Init the server, make the server ready to accept connections.
+     */
     private void init() {
         try {
             ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
@@ -46,23 +61,22 @@ public class Server {
         }
     }
 
-    // 由子类覆盖实现自定义逻辑
+    /**
+     * The most important method of the Server.
+     * SubClass of this class should override this method to customize the server.
+     * @param request The Request instance parsed from HTTP request line, request header and request body.
+     * @return HTTP response.
+     */
     protected Response handle(Request request) {
-        // return new HtmlResponse("<h1>😄Welcome to ezhttp!😄</h1>");
-        // return new FileResponse("D:\\图片\\其他\\wick rick.jpg");
-        // Map map = new HashMap();
-        // map.put("a", new String[] {"1", "2", "3"});
-        // map.put("b", "哈哈哈哈");
-        // Map map1 = new HashMap();
-        // map1.put("inner", "innerItem");
-        // map.put("map", map1);
-        // return new JsonResponse(map);
-        // return new NotFoundResponse();
-        return new ServerInternalErrorResponse();
+        return new FileResponse(ClassLoader.getSystemClassLoader().getResource("page/welcome.html").getPath());
     }
 
+    /**
+     * Start the server, make the server ready to select acceptable, readable or writable operations that are ready.
+     */
     public void start() {
         init();
+
         while (true) {
             try {
                 if (selector.select() == 0) continue;
@@ -74,7 +88,6 @@ public class Server {
             Iterator<SelectionKey> iterator = selectionKeys.iterator();
             while (iterator.hasNext()) {
                 SelectionKey key = iterator.next();
-                // 需要及时将key移除，以免重复处理
                 iterator.remove();
 
                 if (key.isAcceptable()) {
@@ -89,6 +102,10 @@ public class Server {
         }
     }
 
+    /**
+     * Accept new connection.
+     * @param key
+     */
     private void accept(SelectionKey key) {
         ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
         try {
@@ -101,6 +118,10 @@ public class Server {
         }
     }
 
+    /**
+     * Process read operation in a new thread.
+     * @param key
+     */
     private void read(SelectionKey key) {
         ThreadPool.execute(new Runnable() {
             @Override
@@ -126,11 +147,13 @@ public class Server {
                 }
             }
         });
-        // todo: keep-alive
-        // 不注销OP_READ的话，由于新线程中的读取存在延迟，将会多次判断READ就绪，重复调用read方法
         key.interestOps(key.interestOps() & ~SelectionKey.OP_READ);
     }
 
+    /**
+     * Process write operation in a new thread.
+     * @param key
+     */
     private void write(SelectionKey key) {
         ThreadPool.execute(new Runnable() {
             @Override
@@ -147,7 +170,6 @@ public class Server {
                 // write to client
                 try {
                     client.write(buffer);
-                    // todo: keep-alive
                     key.cancel();
                     client.close();
                 } catch (IOException e) {
@@ -155,8 +177,6 @@ public class Server {
                 }
             }
         });
-        // 注销写操作
-        // 不注销OP_WRITE的话，由于新线程中的写存在延迟，将会多次判断WRITE就绪，重复调用write方法
         key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);
     }
 

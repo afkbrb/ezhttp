@@ -21,7 +21,11 @@ public class MimeUtil {
         }
     }
 
-    //返回response时，要标明response的Content-Type
+    /**
+     * Decide the content type by path
+     * @param path
+     * @return
+     */
     public static String getContentType(String path){
         int i = path.lastIndexOf(".");
         if(i == -1 || i == path.length() - 1) return "text/plain";

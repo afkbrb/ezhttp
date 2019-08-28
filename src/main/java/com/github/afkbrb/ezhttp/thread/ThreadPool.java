@@ -8,7 +8,9 @@ public class ThreadPool {
 
     private static final ThreadPoolExecutor executor;
 
-    // 可以根据实际情况修改
+    /**
+     * The configuration should be modified according the actual situation.
+     */
     static {
         executor = new ThreadPoolExecutor(20, 100, 60, TimeUnit.SECONDS, new LinkedBlockingQueue<>(500), new ThreadPoolExecutor.DiscardPolicy());
     }

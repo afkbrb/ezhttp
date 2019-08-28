@@ -14,4 +14,5 @@ public class Tests {
         String decode = URLDecoder.decode(encode, "UTF-8");
         System.out.println("decode: " + decode);
     }
+
 }

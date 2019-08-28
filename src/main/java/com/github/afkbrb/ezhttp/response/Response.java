@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 响应模板，可被继承生成文件响应、文本响应等
+ * HTTP Response entity.
  */
 public class Response {
 
@@ -30,11 +30,12 @@ public class Response {
         headers = new HashMap<>();
         body = new byte[0];
         headers.put("Date", TimeUtil.toRFC822(ZonedDateTime.now()));
-        headers.put("Server", "ezhttp");//TODO 看Server规范
+        headers.put("Server", "ezhttp");
         headers.put("Connection", "Closed"); // TODO keep-alive
     }
 
     public ByteBuffer getResponseBuffer() {
+
         if (responseBuffer == null) {
             headers.put("Content-Length", String.valueOf(body.length));
             StringBuilder sb = new StringBuilder();
