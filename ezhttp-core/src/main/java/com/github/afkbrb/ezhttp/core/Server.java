@@ -4,6 +4,8 @@ import com.github.afkbrb.ezhttp.core.request.Request;
 import com.github.afkbrb.ezhttp.core.request.RequestParser;
 import com.github.afkbrb.ezhttp.core.response.*;
 import com.github.afkbrb.ezhttp.core.thread.ThreadPool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -13,6 +15,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 public class Server {
+    final Logger logger = LoggerFactory.getLogger(Server.class);
 
     private String host;
     private int port;
@@ -54,6 +57,7 @@ public class Server {
         try {
             ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
             serverSocketChannel.bind(new InetSocketAddress(host, port));
+            logger.info("Server run at {}:{}", host, port);
             serverSocketChannel.configureBlocking(false);
             selector = Selector.open();
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
@@ -114,7 +118,7 @@ public class Server {
         SocketChannel client = null;
         try {
             client = serverSocketChannel.accept();
-            System.out.println("accept connection from: " + client.getRemoteAddress());
+            logger.info("Accept connection from: {}", client.getRemoteAddress());
             client.configureBlocking(false);
             client.register(selector, SelectionKey.OP_READ);
         } catch (IOException e) {
@@ -139,7 +143,7 @@ public class Server {
             public void run() {
                 SocketChannel client = (SocketChannel) key.channel();
                 try {
-                    System.out.println("read from: " + client.getRemoteAddress());
+                    logger.info("Read from: {}", client.getRemoteAddress());
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -147,7 +151,7 @@ public class Server {
                 try {
                     request = RequestParser.parseRequest(client);
                 } catch (IOException e) {
-                    System.err.println("err parsing request");
+                    logger.error("Error parsing request");
                     key.cancel();
                     try {
                         key.channel().close();
@@ -180,7 +184,7 @@ public class Server {
             public void run() {
                 SocketChannel client = (SocketChannel) key.channel();
                 try {
-                    System.out.println("write to: " + client.getRemoteAddress());
+                    logger.info("Write to: {}", client.getRemoteAddress());
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
