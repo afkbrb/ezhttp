@@ -5,6 +5,8 @@ import com.github.afkbrb.ezhttp.core.exception.IllegalRequestException;
 import com.github.afkbrb.ezhttp.core.protocol.HttpMethod;
 import com.github.afkbrb.ezhttp.core.protocol.HttpVersion;
 import com.github.afkbrb.ezhttp.core.util.BytesUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 public class RequestParser {
+    private static final Logger logger = LoggerFactory.getLogger(RequestParser.class);
 
     /**
      * Assume that the size of the head is less than 8KB.
@@ -79,9 +82,10 @@ public class RequestParser {
             String[] split = str.split(" ");
             String method = split[0];
             String uri = split[1];
+            logger.info("Request URI: {}", decode(uri));
             String version = split[2];
             requestLine.setMethod(HttpMethod.parseMethod(method));
-            requestLine.setRequestURI(uri);
+            requestLine.setRequestURI(decode(uri));
             requestLine.setHttpVersion(HttpVersion.parseHttpVersion(version));
             int index = uri.indexOf('?');
             if (index != -1) {
